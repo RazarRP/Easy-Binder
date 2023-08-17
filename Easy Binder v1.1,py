@@ -1,0 +1,143 @@
+import tkinter as tk
+import keyboard
+import os
+import json
+
+window = tk.Tk()
+window["bg"] = "#2f3136"
+window.title("Easy Binder v1.1")
+window.geometry("1350x400")
+
+def save_text(index):
+    text = entry_fields[index].get()
+    saved_texts[str(index)] = text
+    save_data()
+
+def send_text(index):
+    if saved_texts[str(index)]:
+        keyboard.write(saved_texts[str(index)])
+        if enter_mode.get():
+            keyboard.press_and_release("enter")
+
+def change_combination(index):
+    new_combination = entry_combinations[index].get()
+    keyboard.remove_hotkey(saved_combinations[str(index)])
+    saved_combinations[str(index)] = new_combination
+    save_data()
+    keyboard.add_hotkey(new_combination, send_text, args=(index,))
+
+def save_data():
+    data = {
+        "texts": saved_texts,
+        "combinations": saved_combinations
+    }
+    with open("data.json", "w") as file:
+        json.dump(data, file)
+
+def load_data():
+    if os.path.exists("data.json"):
+        with open("data.json", "r") as file:
+            data = json.load(file)
+            saved_texts.update(data["texts"])
+            saved_combinations.update(data["combinations"])
+
+def on_closing():
+    save_data()
+    window.destroy()
+
+def toggle_language():
+    if current_language.get() == "english":
+        change_language("українська")
+    else:
+        change_language("english")
+
+def change_language(language):
+    if language in translations:
+        current_language.set(language)
+        current_translations = translations[language]
+        for i in range(5):
+            lbl_texts[i].config(text=current_translations["Text"][i])
+            lbl_combinations[i].config(text=current_translations["Combination"])
+            save_btns[i].config(text=current_translations["Save"])
+            send_btns[i].config(text=current_translations["Send"])
+            change_comb_btns[i].config(text=current_translations["Change Combination"])
+        language_switch.config(text=current_translations["Switch Language"])
+    else:
+        print(f"Language '{language}' not found in translations.")
+
+# Завантаження даних та інші початкові налаштування
+translations = {
+    "english": {
+        "Text": ["Text 1:", "Text 2:", "Text 3:", "Text 4:", "Text 5:"],
+        "Combination": "Combination:",
+        "Save": "Save",
+        "Send": "Send",
+        "Change Combination": "Change Combination",
+        "Switch Language": "Переключити мову"
+    },
+    "українська": {
+        "Text": ["Текст 1:", "Текст 2:", "Текст 3:", "Текст 4:", "Текст 5:"],
+        "Combination": "Комбінація:",
+        "Save": "Зберегти",
+        "Send": "Відправити",
+        "Change Combination": "Змінити Комбінацію",
+        "Switch Language": "Switch Language"
+    }
+}
+
+saved_texts = {"0": "", "1": "", "2": "", "3": "", "4": ""}
+saved_combinations = {"0": "Ctrl+1", "1": "Ctrl+2", "2": "Ctrl+3", "3": "Ctrl+4", "4": "Ctrl+5"}
+
+current_language = tk.StringVar()
+current_language.set("українська")
+current_translations = translations[current_language.get()]
+
+enter_mode = tk.BooleanVar()
+enter_mode.set(False)
+
+enter_mode_chk = tk.Checkbutton(window, text="Auto Enter", variable=enter_mode, font=("Arial", 10, "bold"), bg=window.cget("bg"), fg="white", selectcolor="#f00", activebackground="#f00")
+enter_mode_chk.grid(row=5, column=0, padx=10, pady=5, columnspan=7)
+
+lbl_texts = [None] * 5
+save_btns = [None] * 5
+send_btns = [None] * 5
+lbl_combinations = [None] * 5
+change_comb_btns = [None] * 5
+
+entry_fields = [None] * 5  # Додали список для збереження посилань на поля вводу
+
+for i in range(5):
+    lbl_texts[i] = tk.Label(window, text=current_translations["Text"][i], font=("Arial", 12, "bold"), width=15, height=2, bg=window.cget("bg"), fg="white")
+    lbl_texts[i].grid(row=i, column=0)
+
+    entry = tk.Entry(window, width=50, highlightbackground="#f09670", highlightthickness=2, bg=window.cget("bg"), font=("Arial", 12, "bold"), fg="white")
+    entry.grid(row=i, column=1)
+    entry.insert(0, saved_texts[str(i)])
+    entry_fields[i] = entry  # Зберігаємо посилання на поле вводу
+
+    save_btns[i] = tk.Button(window, text=current_translations["Save"], command=lambda i=i: save_text(i), width=15, height=2, font=("Arial", 10, "bold"), bg=window.cget("bg"), fg="white", bd=2)
+    save_btns[i].grid(row=i, column=2, padx=10, pady=5)
+
+    send_btns[i] = tk.Button(window, text=current_translations["Send"], command=lambda i=i: send_text(i), width=15, height=2, font=("Arial", 10, "bold"), bg=window.cget("bg"), fg="white", bd=2)
+    send_btns[i].grid(row=i, column=3, padx=10, pady=5)
+
+    lbl_combinations[i] = tk.Label(window, text=current_translations["Combination"], font=("Arial", 12, "bold"), width=15, height=2, bg=window.cget("bg"), fg="white")
+    lbl_combinations[i].grid(row=i, column=4, padx=10, pady=5)
+
+    entry_comb = tk.Entry(window, width=8, highlightbackground="#f09670", highlightthickness=2, bg=window.cget("bg"), font=("Arial", 12, "bold"), fg="white")
+    entry_comb.grid(row=i, column=5)
+    entry_comb.insert(0, saved_combinations[str(i)])
+
+    change_comb_btns[i] = tk.Button(window, text=current_translations["Change Combination"], command=lambda i=i: change_combination(i), width=18, height=2, font=("Arial", 10, "bold"), bg=window.cget("bg"), fg="white", bd=2)
+    change_comb_btns[i].grid(row=i, column=6, padx=10, pady=5)
+
+    keyboard.add_hotkey(saved_combinations[str(i)], send_text, args=(i,))
+
+language_switch = tk.Button(window, text=current_translations["Switch Language"], command=toggle_language, width=15, height=2, font=("Arial", 10, "bold"), bg=window.cget("bg"), fg="white", bd=2)
+language_switch.grid(row=8, column=6, columnspan=7, pady=10)
+
+lbl_own = tk.Label(window, text="By Razar", font=("Arial", 12, "bold"), width=10, height=2, bg=window.cget("bg"), fg="white")
+lbl_own.place(x=1230, y=360) 
+
+window.protocol("WM_DELETE_WINDOW", on_closing)
+window.mainloop()
